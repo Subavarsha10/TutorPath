@@ -1,0 +1,12 @@
+
+streamlit
+groq
+python-dotenv
+chromadb
+sentence-transformers
+langchain-text-splitters
+sympy
+pymupdf
+pymupdf4llm
+google-api-python-client
+pandas

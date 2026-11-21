@@ -1,0 +1,76 @@
+
+{
+  "curriculum": "Karnataka State Board",
+  "board": "Karnataka State Board",
+  "subject": "Mathematics",
+  "medium": "English",
+  "grades": {
+    "8": {
+      "book": "Ganita Prakash",
+      "parts": [
+        "8th English Maths Part 1 2026-27",
+        "8th English Maths Part 2 2026-27"
+      ],
+      "topics": [
+        "A Square and A Cube",
+        "Power Play",
+        "A Story of Numbers",
+        "Quadrilaterals",
+        "Number Play",
+        "We Distribute Yet Things Multiply",
+        "Proportional Reasoning",
+        "Fractions in Disguise",
+        "The Baudhayana - Pythagoras Theorem",
+        "Proportional Reasoning-2",
+        "Exploring Some Geometric Themes",
+        "Tales by Dots, Bars, and Lines",
+        "Algebra Play",
+        "Area"
+      ]
+    },
+    "9": {
+      "book": "Mathematics",
+      "parts": [
+        "9th English Maths Part 1 2026-27",
+        "9th English Maths Part 2 2026-27"
+      ],
+      "topics": [
+        "Number Systems",
+        "Polynomials",
+        "Coordinate Geometry",
+        "Linear Equations in Two Variables",
+        "Introduction to Euclid's Geometry",
+        "Triangles",
+        "Quadrilaterals",
+        "Circles",
+        "Heron's Formula",
+        "Surface Areas and Volumes",
+        "Statistics"
+      ],
+      "note": "Chapter 6 is not visible in the extracted contents supplied so far. This list is provisional."
+    },
+    "10": {
+      "book": "Mathematics",
+      "parts": [
+        "10th English Maths Part 1 2026-27",
+        "10th English Maths Part 2 2026-27"
+      ],
+      "topics": [
+        "Real Numbers",
+        "Polynomials",
+        "Pair of Linear Equations in Two Variables",
+        "Quadratic Equations",
+        "Arithmetic Progressions",
+        "Triangles",
+        "Coordinate Geometry",
+        "Introduction to Trigonometry",
+        "Some Applications of Trigonometry",
+        "Circles",
+        "Areas Related to Circles",
+        "Surface Areas and Volumes",
+        "Statistics",
+        "Probability"
+      ]
+    }
+  }
+}

@@ -1,0 +1,35 @@
+
+# Environment and secrets
+.env
+.env.*
+!.env.example
+
+# Python virtual environment
+venv/
+.venv/
+
+# Python cache
+__pycache__/
+*.py[cod]
+
+# Local databases and vector stores
+vectorstore/
+database/
+*.db
+*.sqlite3
+
+# Processed textbook data
+data/processed/
+
+# IDE and operating system files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Streamlit secrets
+.streamlit/secrets.toml
+
+# Exclude original textbook PDFs
+data/mathematics/grade_*/chapters/*.pdf
+data/source_references/grade_*/*.pdf
