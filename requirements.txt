@@ -2,7 +2,7 @@
 streamlit
 groq
 python-dotenv
-chromadb
+chromadb==1.5.9
 sentence-transformers
 langchain-text-splitters
 sympy
@@ -10,3 +10,4 @@ pymupdf
 pymupdf4llm
 google-api-python-client
 pandas
+huggingface-hub

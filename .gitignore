@@ -33,3 +33,9 @@ Thumbs.db
 # Exclude original textbook PDFs
 data/mathematics/grade_*/chapters/*.pdf
 data/source_references/grade_*/*.pdf
+
+
+# Vector database
+vectorstore/
+tutorpath_vectorstore.zip
+tutorpath_vectorstore

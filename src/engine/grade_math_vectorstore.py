@@ -1,54 +1,75 @@
 
 import json
+import os
+import zipfile
 from pathlib import Path
 
 import chromadb
+import streamlit as st
+from huggingface_hub import hf_hub_download
 from sentence_transformers import SentenceTransformer
 
 
-# --------------------------------------------------
-# CONFIGURATION
-# --------------------------------------------------
-
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
-
 VECTORSTORE_PATH = PROJECT_ROOT / "vectorstore"
 
 COLLECTION_NAME = "tutorpath_grade_mathematics"
-
 MODEL_NAME = "sentence-transformers/all-MiniLM-L6-v2"
 
-
-# --------------------------------------------------
-# INITIALISE EMBEDDING MODEL
-# --------------------------------------------------
-
-print("Loading mathematics embedding model...")
-
-embedding_model = SentenceTransformer(MODEL_NAME)
+HF_REPO_ID = "subavarsha10/tutorpath-vectorstore"
+HF_FILENAME = "tutorpath_vectorstore.zip"
 
 
-# --------------------------------------------------
-# INITIALISE CHROMADB
-# --------------------------------------------------
+def ensure_vectorstore():
+    db_file = VECTORSTORE_PATH / "chroma.sqlite3"
+
+    if db_file.exists():
+        return
+
+    VECTORSTORE_PATH.mkdir(parents=True, exist_ok=True)
+
+    token = st.secrets.get("HF_TOKEN")
+
+    if not token:
+        raise RuntimeError("HF_TOKEN is missing from Streamlit Secrets.")
+
+    archive_path = hf_hub_download(
+        repo_id=HF_REPO_ID,
+        filename=HF_FILENAME,
+        repo_type="model",
+        token=token
+    )
+
+    with zipfile.ZipFile(archive_path, "r") as archive:
+        archive.extractall(VECTORSTORE_PATH)
+
+    if not db_file.exists():
+        raise RuntimeError(
+            "The downloaded ZIP does not contain chroma.sqlite3 "
+            "at the expected location."
+        )
+
+
+@st.cache_resource
+def load_embedding_model():
+    return SentenceTransformer(MODEL_NAME)
+
+
+ensure_vectorstore()
+
+embedding_model = load_embedding_model()
 
 client = chromadb.PersistentClient(
     path=str(VECTORSTORE_PATH)
 )
 
-collection = client.get_or_create_collection(
-    name=COLLECTION_NAME,
-    metadata={"hnsw:space": "cosine"}
+collection = client.get_collection(
+    name=COLLECTION_NAME
 )
 
 
-# --------------------------------------------------
-# LOAD GRADE CHUNKS
-# --------------------------------------------------
-
 def load_grade_chunks(grade):
-
-    input_file = (
+    chunk_file = (
         PROJECT_ROOT
         / "data"
         / "processed"
@@ -56,193 +77,83 @@ def load_grade_chunks(grade):
         / "math_chunks.jsonl"
     )
 
-    if not input_file.exists():
-        raise FileNotFoundError(
-            f"Chunk file not found: {input_file}"
-        )
+    if not chunk_file.exists():
+        return []
 
     chunks = []
 
-    with input_file.open("r", encoding="utf-8") as file:
-
+    with open(chunk_file, "r", encoding="utf-8") as file:
         for line in file:
-
             if line.strip():
                 chunks.append(json.loads(line))
 
     return chunks
 
 
-# --------------------------------------------------
-# ADD GRADE CONTENT TO VECTOR STORE
-# --------------------------------------------------
-
 def index_grade_content(grade):
-
-    print(f"\nIndexing Mathematics - Grade {grade}")
-
     chunks = load_grade_chunks(grade)
 
     if not chunks:
-        print("No chunks available.")
         return 0
 
-    documents = [
-        chunk["text"] for chunk in chunks
-    ]
-
-    metadatas = [
-        chunk["metadata"] for chunk in chunks
-    ]
-
-    ids = [
-        chunk["id"] for chunk in chunks
-    ]
-
-    print("Generating embeddings...")
+    documents = [chunk["text"] for chunk in chunks]
 
     embeddings = embedding_model.encode(
         documents,
-        convert_to_numpy=True,
-        normalize_embeddings=True
-    )
+        show_progress_bar=False
+    ).tolist()
 
-    print("Saving content to ChromaDB...")
+    ids = [
+        f"grade_{grade}_chunk_{i}"
+        for i in range(len(chunks))
+    ]
+
+    metadatas = [
+        {
+            **chunk.get("metadata", {}),
+            "grade": str(grade)
+        }
+        for chunk in chunks
+    ]
 
     collection.upsert(
         ids=ids,
         documents=documents,
-        embeddings=embeddings.tolist(),
+        embeddings=embeddings,
         metadatas=metadatas
     )
-
-    print("Indexed chunks:", len(chunks))
 
     return len(chunks)
 
 
-# --------------------------------------------------
-# SEARCH MATHEMATICS KNOWLEDGE
-# --------------------------------------------------
-
-def search_grade_knowledge(
-    query,
-    grade,
-    top_k=3
-):
+def search_grade_knowledge(query, grade, top_k=3):
+    grade = str(grade)
 
     if grade not in ["8", "9", "10"]:
-        raise ValueError("Grade must be 8, 9 or 10.")
+        return []
 
     if collection.count() == 0:
         return []
 
     query_embedding = embedding_model.encode(
         [query],
-        convert_to_numpy=True,
-        normalize_embeddings=True
-    )
+        show_progress_bar=False
+    ).tolist()
 
     results = collection.query(
-        query_embeddings=query_embedding.tolist(),
+        query_embeddings=query_embedding,
         n_results=min(top_k, collection.count()),
         where={"grade": grade},
-        include=[
-            "documents",
-            "metadatas",
-            "distances"
-        ]
+        include=["documents", "metadatas", "distances"]
     )
 
-    matches = []
+    output = []
 
-    if not results["documents"]:
-        return matches
-
-    for index, document in enumerate(results["documents"][0]):
-
-        matches.append({
-
+    for i, document in enumerate(results["documents"][0]):
+        output.append({
             "text": document,
-
-            "metadata": results["metadatas"][0][index],
-
-            "distance": results["distances"][0][index]
-
+            "metadata": results["metadatas"][0][i],
+            "distance": results["distances"][0][i]
         })
 
-    return matches
-
-
-# --------------------------------------------------
-# TEST VECTOR STORE
-# --------------------------------------------------
-
-if __name__ == "__main__":
-
-    print("\nTUTORPATH GRADE-AWARE VECTOR STORE")
-    print("=" * 45)
-
-    grade = input(
-        "Enter grade to index (8, 9 or 10): "
-    ).strip()
-
-    try:
-
-        total = index_grade_content(grade)
-
-        print("\nIndexing completed.")
-        print("Total chunks indexed:", total)
-
-        query = input(
-            "\nEnter a mathematics search query: "
-        )
-
-        results = search_grade_knowledge(
-            query=query,
-            grade=grade,
-            top_k=3
-        )
-
-        print("\nSEARCH RESULTS")
-        print("-" * 45)
-
-        for index, result in enumerate(results, start=1):
-
-            print(f"\nResult {index}")
-
-            print("Grade:", result["metadata"]["grade"])
-
-            print("Source:", result["metadata"]["source"])
-
-            print("Page:", result["metadata"]["page_number"])
-
-            print("Content:", result["text"][:300])
-
-            print("Distance:", result["distance"])
-
-        print("\nVector store test completed.")
-
-    except Exception as error:
-
-        print("\nVECTOR STORE ERROR")
-        print(error)
-def verify_all_grades():
-
-    print("\nTUTORPATH VECTOR STORE VERIFICATION")
-    print("=" * 45)
-
-    print("Total chunks in collection:", collection.count())
-
-    for grade in ["8", "9", "10"]:
-
-        results = collection.get(
-            where={"grade": grade},
-            include=["metadatas"]
-        )
-
-        print(
-            f"Class {grade}: {len(results['ids'])} chunks indexed"
-        )
-
-    print("\nVerification completed.")
+    return output
